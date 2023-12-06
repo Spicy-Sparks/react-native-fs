@@ -233,6 +233,10 @@ var RNFS = {
     return RNFSManager.unlink(normalizeFilePath(filepath)).then(() => void 0);
   },
 
+  unlinkMultiple(filepaths: Array<string>): Promise<void> {
+    return RNFSManager.unlinkMultiple(filepaths.map(filepath => normalizeFilePath(filepath))).then(() => void 0);
+  },
+
   exists(filepath: string): Promise<boolean> {
     return RNFSManager.exists(normalizeFilePath(filepath));
   },

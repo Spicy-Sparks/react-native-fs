@@ -231,6 +231,44 @@ RCT_EXPORT_METHOD(unlink:(NSString*)filepath
   resolve(nil);
 }
 
+RCT_EXPORT_METHOD(unlinkMultiple:(NSArray<NSString *> *)filepaths
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  NSFileManager *manager = [NSFileManager defaultManager];
+  NSMutableArray *errors = [NSMutableArray array];
+
+  for (NSString *filepath in filepaths) {
+      BOOL exists = [manager fileExistsAtPath:filepath isDirectory:false];
+
+      if (!exists) {
+          NSError *error = [NSError errorWithDomain:NSPOSIXErrorDomain code:ENOENT userInfo:@{NSFilePathErrorKey: filepath}];
+          [errors addObject:error];
+          continue;
+      }
+
+      NSError *error = nil;
+      BOOL success = [manager removeItemAtPath:filepath error:&error];
+
+      if (!success) {
+          [errors addObject:error];
+      }
+  }
+
+  if (errors.count > 0) {
+      NSMutableArray *errorMessages = [NSMutableArray array];
+      for (NSError *error in errors) {
+          NSString *errorMessage = [NSString stringWithFormat:@"%@: %@", [error domain], [error localizedDescription]];
+          [errorMessages addObject:errorMessage];
+      }
+
+      NSString *combinedErrorMessage = [errorMessages componentsJoinedByString:@"\n"];
+      reject(@"MULTIPLE_UNLINK_ERROR", combinedErrorMessage, nil);
+  } else {
+      resolve(nil);
+  }
+}
+
 RCT_EXPORT_METHOD(mkdir:(NSString *)filepath
                   options:(NSDictionary *)options
                   resolver:(RCTPromiseResolveBlock)resolve
