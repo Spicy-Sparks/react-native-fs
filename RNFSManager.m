@@ -517,6 +517,7 @@ RCT_EXPORT_METHOD(downloadFile:(NSDictionary *)options
   params.toFile = options[@"toFile"];
   NSDictionary* headers = options[@"headers"];
   params.headers = headers;
+  NSString* contentId = options[@"contentId"];
   NSNumber* background = options[@"background"];
   params.background = [background boolValue];
   NSNumber* discretionary = options[@"discretionary"];
@@ -577,7 +578,8 @@ RCT_EXPORT_METHOD(downloadFile:(NSDictionary *)options
           [self sendEventWithName:@"DownloadProgress"
                                                   body:@{@"jobId": jobId,
                                                           @"contentLength": contentLength,
-                                                          @"bytesWritten": bytesWritten}];
+                                                          @"bytesWritten": bytesWritten,
+                                                          @"contentId": contentId}];
     };
   }
 
