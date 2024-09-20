@@ -579,7 +579,7 @@ RCT_EXPORT_METHOD(downloadFile:(NSDictionary *)options
                                                   body:@{@"jobId": jobId,
                                                           @"contentLength": contentLength,
                                                           @"bytesWritten": bytesWritten,
-                                                          @"contentId": contentId}];
+                                                          @"contentId": contentId ?: [NSNull null]}];
     };
   }
 
