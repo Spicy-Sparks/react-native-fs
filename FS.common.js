@@ -64,44 +64,6 @@ type StatResult = {
 type Headers = { [name: string]: string };
 type Fields = { [name: string]: string };
 
-type DownloadFileOptions = {
-  fromUrl: string;          // URL to download file from
-  toFile: string;           // Local filesystem path to save the file to
-  headers?: Headers;        // An object of headers to be passed to the server
-  contentId?: string;       // The id of the downloading content
-  background?: boolean;     // Continue the download in the background after the app terminates (iOS only)
-  discretionary?: boolean;  // Allow the OS to control the timing and speed of the download to improve perceived performance  (iOS only)
-  cacheable?: boolean;      // Whether the download can be stored in the shared NSURLCache (iOS only)
-  progressInterval?: number;
-  progressDivider?: number;
-  begin?: (res: DownloadBeginCallbackResult) => void;
-  progress?: (res: DownloadProgressCallbackResult) => void;
-  resumable?: () => void;    // only supported on iOS yet
-  connectionTimeout?: number; // only supported on Android yet
-  readTimeout?: number;       // supported on Android and iOS
-  backgroundTimeout?: number; // Maximum time (in milliseconds) to download an entire resource (iOS only, useful for timing out background downloads)
-};
-
-type DownloadBeginCallbackResult = {
-  jobId: number;          // The download job ID, required if one wishes to cancel the download. See `stopDownload`.
-  statusCode: number;     // The HTTP status code
-  contentLength: number;  // The total size in bytes of the download resource
-  headers: Headers;       // The HTTP response headers from the server
-};
-
-type DownloadProgressCallbackResult = {
-  jobId: number;          // The download job ID, required if one wishes to cancel the download. See `stopDownload`.
-  contentLength: number;  // The total size in bytes of the download resource
-  contentId?: string;      // The id of the downloading content
-  bytesWritten: number;   // The number of bytes written to the file so far
-};
-
-type DownloadResult = {
-  jobId: number;          // The download job ID, required if one wishes to cancel the download. See `stopDownload`.
-  statusCode: number;     // The HTTP status code
-  bytesWritten: number;   // The number of bytes written to the file
-};
-
 type UploadFileOptions = {
   toUrl: string;            // URL to upload file to
   binaryStreamOnly?: boolean; // Allow for binary data stream for file to be uploaded without extra headers, Default is 'false'
@@ -241,18 +203,6 @@ var RNFS = {
 
   exists(filepath: string): Promise<boolean> {
     return RNFSManager.exists(normalizeFilePath(filepath));
-  },
-
-  stopDownload(jobId: number): void {
-    RNFSManager.stopDownload(jobId);
-  },
-
-  resumeDownload(jobId: number): void {
-    RNFSManager.resumeDownload(jobId);
-  },
-
-  isResumable(jobId: number): Promise<bool> {
-    return RNFSManager.isResumable(jobId);
   },
 
   stopUpload(jobId: number): void {
@@ -496,68 +446,6 @@ var RNFS = {
     }
 
     return RNFSManager.write(normalizeFilePath(filepath), b64, position).then(() => void 0);
-  },
-
-  downloadFile(options: DownloadFileOptions): { jobId: number, promise: Promise<DownloadResult> } {
-    if (typeof options !== 'object') throw new Error('downloadFile: Invalid value for argument `options`');
-    if (typeof options.fromUrl !== 'string') throw new Error('downloadFile: Invalid value for property `fromUrl`');
-    if (typeof options.toFile !== 'string') throw new Error('downloadFile: Invalid value for property `toFile`');
-    if (options.headers && typeof options.headers !== 'object') throw new Error('downloadFile: Invalid value for property `headers`');
-    if (options.background && typeof options.background !== 'boolean') throw new Error('downloadFile: Invalid value for property `background`');
-    if (options.progressDivider && typeof options.progressDivider !== 'number') throw new Error('downloadFile: Invalid value for property `progressDivider`');
-    if (options.progressInterval && typeof options.progressInterval !== 'number') throw new Error('downloadFile: Invalid value for property `progressInterval`');
-    if (options.readTimeout && typeof options.readTimeout !== 'number') throw new Error('downloadFile: Invalid value for property `readTimeout`');
-    if (options.connectionTimeout && typeof options.connectionTimeout !== 'number') throw new Error('downloadFile: Invalid value for property `connectionTimeout`');
-    if (options.backgroundTimeout && typeof options.backgroundTimeout !== 'number') throw new Error('downloadFile: Invalid value for property `backgroundTimeout`');
-
-    var jobId = getJobId();
-    var subscriptions = [];
-
-    if (options.begin) {
-      subscriptions.push(RNFS_NativeEventEmitter.addListener('DownloadBegin', (res) => {
-        if (res.jobId === jobId) options.begin(res);
-      }));
-    }
-
-    if (options.progress) {
-      subscriptions.push(RNFS_NativeEventEmitter.addListener('DownloadProgress', (res) => {
-        if (res.jobId === jobId) options.progress(res);
-      }));
-    }
-
-    if (options.resumable) {
-      subscriptions.push(RNFS_NativeEventEmitter.addListener('DownloadResumable', (res) => {
-        if (res.jobId === jobId) options.resumable(res);
-      }));
-    }
-
-    var bridgeOptions = {
-      jobId: jobId,
-      fromUrl: options.fromUrl,
-      toFile: normalizeFilePath(options.toFile),
-      headers: options.headers || {},
-      contentId: options.contentId || null,
-      background: !!options.background,
-      progressDivider: options.progressDivider || 0,
-      progressInterval: options.progressInterval || 0,
-      readTimeout: options.readTimeout || 15000,
-      connectionTimeout: options.connectionTimeout || 5000,
-      backgroundTimeout: options.backgroundTimeout || 3600000, // 1 hour
-      hasBeginCallback: options.begin instanceof Function,
-      hasProgressCallback: options.progress instanceof Function,
-      hasResumableCallback: options.resumable instanceof Function,
-    };
-
-    return {
-      jobId,
-      promise: RNFSManager.downloadFile(bridgeOptions).then(res => {
-        subscriptions.forEach(sub => sub.remove());
-        return res;
-      })
-        .catch(e => {
-          return Promise.reject(e);
-        })
-    };
   },
 
   uploadFiles(options: UploadFileOptions): { jobId: number, promise: Promise<UploadResult> } {

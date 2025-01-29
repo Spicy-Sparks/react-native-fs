@@ -9,7 +9,6 @@
 #import "RNFSManager.h"
 
 #import "NSArray+Map.h"
-#import "Downloader.h"
 #import "Uploader.h"
 
 #import <React/RCTEventDispatcher.h>
@@ -27,7 +26,6 @@
 
 @interface RNFSManager()
 
-@property (retain) NSMutableDictionary* downloaders;
 @property (retain) NSMutableDictionary* uuids;
 @property (retain) NSMutableDictionary* uploaders;
 
@@ -503,151 +501,7 @@ RCT_EXPORT_METHOD(copyFile:(NSString *)filepath
 
 - (NSArray<NSString *> *)supportedEvents
 {
-    return @[@"UploadBegin",@"UploadProgress",@"DownloadBegin",@"DownloadProgress",@"DownloadResumable"];
-}
-
-RCT_EXPORT_METHOD(downloadFile:(NSDictionary *)options
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
-{
-  RNFSDownloadParams* params = [RNFSDownloadParams alloc];
-
-  NSNumber* jobId = options[@"jobId"];
-  params.fromUrl = options[@"fromUrl"];
-  params.toFile = options[@"toFile"];
-  NSDictionary* headers = options[@"headers"];
-  params.headers = headers;
-  NSString* contentId = options[@"contentId"];
-  NSNumber* background = options[@"background"];
-  params.background = [background boolValue];
-  NSNumber* discretionary = options[@"discretionary"];
-  params.discretionary = [discretionary boolValue];
-  NSNumber* cacheable = options[@"cacheable"];
-  params.cacheable = cacheable ? [cacheable boolValue] : YES;
-  NSNumber* progressInterval= options[@"progressInterval"];
-  params.progressInterval = progressInterval;
-  NSNumber* progressDivider = options[@"progressDivider"];
-  params.progressDivider = progressDivider;
-  NSNumber* readTimeout = options[@"readTimeout"];
-  params.readTimeout = readTimeout;
-  NSNumber* backgroundTimeout = options[@"backgroundTimeout"];
-  params.backgroundTimeout = backgroundTimeout;
-  bool hasBeginCallback = [options[@"hasBeginCallback"] boolValue];
-  bool hasProgressCallback = [options[@"hasProgressCallback"] boolValue];
-  bool hasResumableCallback = [options[@"hasResumableCallback"] boolValue];
-
-  __block BOOL callbackFired = NO;
-
-  params.completeCallback = ^(NSNumber* statusCode, NSNumber* bytesWritten) {
-    if (callbackFired) {
-      return;
-    }
-    callbackFired = YES;
-
-    NSMutableDictionary* result = [[NSMutableDictionary alloc] initWithDictionary: @{@"jobId": jobId}];
-    if (statusCode) {
-      [result setObject:statusCode forKey: @"statusCode"];
-    }
-    if (bytesWritten) {
-      [result setObject:bytesWritten forKey: @"bytesWritten"];
-    }
-    return resolve(result);
-  };
-
-  params.errorCallback = ^(NSError* error) {
-    if (callbackFired) {
-      return;
-    }
-    callbackFired = YES;
-    return [self reject:reject withError:error];
-  };
-
-  if (hasBeginCallback) {
-    params.beginCallback = ^(NSNumber* statusCode, NSNumber* contentLength, NSDictionary* headers) {
-        if (self.bridge != nil)
-            [self sendEventWithName:@"DownloadBegin" body:@{@"jobId": jobId,
-                                                                                            @"statusCode": statusCode,
-                                                                                            @"contentLength": contentLength,
-                                                                                            @"headers": headers ?: [NSNull null]}];
-    };
-  }
-
-  if (hasProgressCallback) {
-    params.progressCallback = ^(NSNumber* contentLength, NSNumber* bytesWritten) {
-        if (self.bridge != nil)
-          [self sendEventWithName:@"DownloadProgress"
-                                                  body:@{@"jobId": jobId,
-                                                          @"contentLength": contentLength,
-                                                          @"bytesWritten": bytesWritten,
-                                                          @"contentId": contentId ?: [NSNull null]}];
-    };
-  }
-
-  if (hasResumableCallback) {
-    params.resumableCallback = ^() {
-        if (self.bridge != nil)
-            [self sendEventWithName:@"DownloadResumable" body:@{@"jobId": jobId}];
-    };
-  }
-
-  if (!self.downloaders) self.downloaders = [[NSMutableDictionary alloc] init];
-
-  RNFSDownloader* downloader = [RNFSDownloader alloc];
-
-  NSString *uuid = [downloader downloadFile:params];
-
-  [self.downloaders setValue:downloader forKey:[jobId stringValue]];
-    if (uuid) {
-        if (!self.uuids) self.uuids = [[NSMutableDictionary alloc] init];
-        [self.uuids setValue:uuid forKey:[jobId stringValue]];
-    }
-}
-
-RCT_EXPORT_METHOD(stopDownload:(nonnull NSNumber *)jobId)
-{
-  RNFSDownloader* downloader = [self.downloaders objectForKey:[jobId stringValue]];
-
-  if (downloader != nil) {
-    [downloader stopDownload];
-  }
-}
-
-RCT_EXPORT_METHOD(resumeDownload:(nonnull NSNumber *)jobId)
-{
-    RNFSDownloader* downloader = [self.downloaders objectForKey:[jobId stringValue]];
-
-    if (downloader != nil) {
-        [downloader resumeDownload];
-    }
-}
-
-RCT_EXPORT_METHOD(isResumable:(nonnull NSNumber *)jobId
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject
-)
-{
-    RNFSDownloader* downloader = [self.downloaders objectForKey:[jobId stringValue]];
-
-    if (downloader != nil) {
-        resolve([NSNumber numberWithBool:[downloader isResumable]]);
-    } else {
-        resolve([NSNumber numberWithBool:NO]);
-    }
-}
-
-RCT_EXPORT_METHOD(completeHandlerIOS:(nonnull NSNumber *)jobId
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject)
-{
-    if (self.uuids) {
-        NSString *uuid = [self.uuids objectForKey:[jobId stringValue]];
-        CompletionHandler completionHandler = [completionHandlers objectForKey:uuid];
-        if (completionHandler) {
-            completionHandler();
-            [completionHandlers removeObjectForKey:uuid];
-        }
-    }
-    resolve(nil);
+    return @[@"UploadBegin",@"UploadProgress"];
 }
 
 RCT_EXPORT_METHOD(uploadFiles:(NSDictionary *)options
