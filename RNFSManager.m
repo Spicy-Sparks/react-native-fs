@@ -263,7 +263,7 @@ RCT_EXPORT_METHOD(unlinkMultiple:(NSArray<NSString *> *)filepaths
       }
 
       NSString *combinedErrorMessage = [errorMessages componentsJoinedByString:@"\n"];
-      reject(@"MULTIPLE_UNLINK_ERROR", combinedErrorMessage, nil);
+      reject(@"Error in unlinkMultiple", combinedErrorMessage, nil);
   } else {
       resolve(nil);
   }

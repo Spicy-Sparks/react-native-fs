@@ -973,11 +973,13 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     }
     if (ex instanceof IORejectionException) {
       IORejectionException ioRejectionException = (IORejectionException) ex;
-      promise.reject(ioRejectionException.getCode(), ioRejectionException.getMessage());
+      String code = ioRejectionException.getCode();
+      String message = ioRejectionException.getMessage();
+      promise.reject(code != null ? code : "EUNKNOWN", message != null ? message : "Unknown error");
       return;
     }
 
-    promise.reject(null, ex.getMessage());
+    promise.reject("EUNKNOWN", ex.getMessage() != null ? ex.getMessage() : "Unknown error");
   }
 
   private void rejectFileNotFound(Promise promise, String filepath) {
